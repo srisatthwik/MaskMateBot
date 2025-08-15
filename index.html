@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MaskMate Mini App</title>
+    <!-- Use a simple, clean font like 'Inter' for a modern feel -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        /* CSS Variables for dynamic Telegram theme colors */
+        :root {
+            --tg-bg-color: var(--tg-theme-bg-color, #ffffff);
+            --tg-text-color: var(--tg-theme-text-color, #000000);
+            --tg-hint-color: var(--tg-theme-hint-color, #8e8e93);
+            --tg-link-color: var(--tg-theme-link-color, #007aff);
+            --tg-secondary-bg-color: var(--tg-theme-secondary-bg-color, #f4f4f5);
+            --tg-accent-text-color: var(--tg-theme-accent-text-color, #007aff);
+            --tg-button-color: var(--tg-theme-button-color, #007aff);
+            --tg-button-text-color: var(--tg-theme-button-text-color, #ffffff);
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            background-color: var(--tg-bg-color);
+            color: var(--tg-text-color);
+            padding: 0;
+            margin: 0;
+            transition: background-color 0.3s ease, color 0.3s ease;
+            -webkit-user-select: none;
+            user-select: none;
+            overflow-x: hidden; /* Prevent horizontal scrolling */
+            min-height: 100vh;
+        }
+
+        .container {
+            padding: 16px;
+            /* Use safe area to prevent UI overlap with Telegram's controls */
+            padding-top: calc(env(safe-area-inset-top) + 16px);
+            padding-bottom: calc(env(safe-area-inset-bottom) + 16px);
+            padding-left: calc(env(safe-area-inset-left) + 16px);
+            padding-right: calc(env(safe-area-inset-right) + 16px);
+        }
+
+        .page-content {
+            display: none;
+            min-height: 100vh;
+            animation: fadeIn 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .page-content.active {
+            display: block;
+        }
+        
+        /* Disable animations for low-performance devices */
+        body.low-performance .page-content {
+            animation: none;
+        }
+
+        h1 {
+            font-size: 24px;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 24px;
+            color: var(--tg-text-color);
+        }
+
+        .card {
+            background-color: var(--tg-secondary-bg-color);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        }
+        
+        .info-item:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            color: var(--tg-hint-color);
+        }
+
+        .info-value {
+            font-weight: 600;
+        }
+
+        .button {
+            display: block;
+            width: 100%;
+            background-color: var(--tg-button-color);
+            color: var(--tg-button-text-color);
+            border: none;
+            padding: 16px;
+            text-align: center;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s ease, transform 0.1s ease;
+            margin-bottom: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .button:active {
+            transform: scale(0.98);
+        }
+
+        .button.secondary {
+            background-color: var(--tg-secondary-bg-color);
+            color: var(--tg-text-color);
+            box-shadow: none;
+        }
+
+        .button-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 16px;
+        }
+        
+        .button-group .button {
+            flex: 1 1 45%;
+            margin-bottom: 0;
+            padding: 12px; /* Adjusted padding for better fit */
+            font-size: 14px;
+        }
+
+        .button-group .button.active {
+            background-color: var(--tg-link-color);
+            color: var(--tg-button-text-color);
+        }
+
+        /* Responsive design for button groups */
+        @media (max-width: 480px) {
+            .button-group .button {
+                flex-basis: 100%;
+            }
+        }
+
+        .list-item {
+            background-color: var(--tg-secondary-bg-color);
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+
+        .text-input, .textarea {
+            width: 100%;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid var(--tg-hint-color);
+            background-color: var(--tg-bg-color);
+            color: var(--tg-text-color);
+            font-size: 16px;
+            box-sizing: border-box;
+            margin-top: 8px;
+            transition: border-color 0.2s ease;
+        }
+
+        .text-input:focus, .textarea:focus {
+            border-color: var(--tg-link-color);
+            outline: none;
+        }
+
+        .textarea {
+            resize: vertical;
+            height: 100px;
+        }
+
+        label {
+            color: var(--tg-hint-color);
+            font-size: 14px;
+            display: block;
+            margin-top: 16px;
+        }
+
+        .status-message {
+            text-align: center;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 16px;
+            font-weight: 600;
+        }
+
+        .status-success {
+            background-color: #e6f7ec;
+            color: #1a7e4b;
+        }
+
+        .status-error {
+            background-color: #fcebeb;
+            color: #a94442;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Main Menu Page -->
+        <div id="main-menu" class="page-content active">
+            <h1>🤖 MaskMateBot</h1>
+            <div class="card">
+                <div class="info-item">
+                    <span class="info-label">Name</span>
+                    <span id="profile-name" class="info-value"></span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Gender</span>
+                    <span id="profile-gender" class="info-value"></span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Status</span>
+                    <span id="profile-status" class="info-value"></span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Premium</span>
+                    <span id="profile-premium" class="info-value"></span>
+                </div>
+            </div>
+            <!-- Custom buttons for other pages remain -->
+            <button class="button" data-action="go_to_profile" aria-label="My Profile">👤 My Profile</button>
+            <button class="button" data-action="go_to_referrals" aria-label="Invite Friends">🎁 Invite Friends</button>
+            <button class="button" data-action="go_to_premium" aria-label="Get Premium">💳 Get Premium (Stars)</button>
+        </div>
+
+        <!-- Profile Page -->
+        <div id="profile-page" class="page-content">
+            <h1>👤 My Profile</h1>
+            <div class="card">
+                <div class="info-item">
+                    <span class="info-label">Name</span>
+                    <span id="profile-display-name" class="info-value"></span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Bio</span>
+                    <span id="profile-display-bio" class="info-value"></span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Location</span>
+                    <span id="profile-display-location" class="info-value"></span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Interests</span>
+                    <span id="profile-display-interests" class="info-value"></span>
+                </div>
+            </div>
+            <button class="button" data-action="edit_name" aria-label="Edit Name">✏️ Edit Name</button>
+            <button class="button" data-action="edit_bio" aria-label="Edit Bio">✏️ Edit Bio</button>
+            <button class="button" data-action="edit_location" aria-label="Edit Location">📍 Edit Location</button>
+            <button class="button" data-action="edit_interests" aria-label="Edit Interests">🎯 Edit Interests</button>
+        </div>
+
+        <!-- Profile Edit Pages -->
+        <div id="edit-name-page" class="page-content">
+            <h1>✏️ Edit Name</h1>
+            <label for="name-input">New Name</label>
+            <input type="text" id="name-input" class="text-input" placeholder="Enter your new name" aria-labelledby="name-input">
+        </div>
+
+        <div id="edit-bio-page" class="page-content">
+            <h1>✏️ Edit Bio</h1>
+            <label for="bio-textarea">New Bio</label>
+            <textarea id="bio-textarea" class="textarea" placeholder="Write a short bio about yourself..." aria-labelledby="bio-textarea"></textarea>
+        </div>
+        
+        <div id="edit-location-page" class="page-content">
+            <h1>📍 Edit Location</h1>
+            <label for="location-input">New Location</label>
+            <input type="text" id="location-input" class="text-input" placeholder="e.g., San Francisco, CA" aria-labelledby="location-input">
+        </div>
+
+        <div id="edit-interests-page" class="page-content">
+            <h1>🎯 Edit Interests</h1>
+            <p style="color:var(--tg-hint-color); text-align:center;">Select up to 5 interests</p>
+            <div id="interests-container" class="button-group"></div>
+        </div>
+
+        <!-- Premium Page -->
+        <div id="premium-page" class="page-content">
+            <h1>💳 Get Premium</h1>
+            <div class="card">
+                <div class="info-item">
+                    <span class="info-label">Your Status</span>
+                    <span id="premium-status-label" class="info-value"></span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Tier</span>
+                    <span id="premium-tier-label" class="info-value"></span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Expires</span>
+                    <span id="premium-expiry-label" class="info-value"></span>
+                </div>
+            </div>
+            <p style="text-align: center; color: var(--tg-hint-color); margin-top: 24px;">Pay with Telegram Stars</p>
+            <button class="button" data-action="buy_basic_week" aria-label="Buy Basic Premium">⭐ Basic 7d - 100⭐</button>
+            <button class="button" data-action="buy_pro_week" aria-label="Buy Pro Premium">💎 Pro 7d - 200⭐</button>
+            <button class="button" data-action="buy_vip_week" aria-label="Buy VIP Premium">👑 VIP 7d - 350⭐</button>
+        </div>
+
+        <!-- Referrals Page -->
+        <div id="referrals-page" class="page-content">
+            <h1>🎁 Referral Program</h1>
+            <div class="card">
+                <p style="text-align: center; color: var(--tg-hint-color); margin-bottom: 8px;">Your Referral Link</p>
+                <div style="background-color: var(--tg-bg-color); padding: 12px; border-radius: 8px; text-align: center; font-weight: 600; overflow-wrap: break-word;">
+                    <span id="referral-link-display"></span>
+                </div>
+                <p style="color:var(--tg-hint-color); font-size:12px; text-align:center; margin-top:8px;">Tap to copy link</p>
+            </div>
+            <div class="card">
+                <div class="info-item">
+                    <span class="info-label">Total Referrals</span>
+                    <span id="referrals-total" class="info-value"></span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Rewards Claimed</span>
+                    <span id="rewards-claimed" class="info-value"></span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Available Rewards</span>
+                    <span id="rewards-available" class="info-value"></span>
+                </div>
+            </div>
+            <button class="button" data-action="claim_reward" aria-label="Claim Reward">🎁 Claim Available Reward</button>
+        </div>
+
+    </div>
+    <script>
+        // Use an IIFE (Immediately Invoked Function Expression) to avoid polluting the global scope
+        (function() {
+            // Check if Telegram WebApp is available
+            const Telegram = window.Telegram.WebApp;
+            
+            // --- DATA SIMULATION (REPLACE WITH BACKEND LOGIC) ---
+            // In a real app, this data would be fetched from a server.
+            let users = {};
+            let paid_subscriptions = {
+                "basic": {}, "pro": {}, "vip": {}
+            };
+            let referral_premium = {};
+            let user_referrals = {};
+            const REFERRALS_FOR_REWARD = 5;
+            const FREE_DAYS_REWARD = 1;
+            const PREMIUM_PRICES = {
+                "buy_basic_week": {price: 100, title: "Basic 7d", days: 7, tier: "basic"},
+                "buy_pro_week": {price: 200, title: "Pro 7d", days: 7, tier: "pro"},
+                "buy_vip_week": {price: 350, title: "VIP 7d", days: 7, tier: "vip"}
+            };
+            const INTERESTS = [
+                "💬 Casual Chatting", "🔥 Flirting", "🤝 Making Friends", "❤️ Finding Love", 
+                "🎮 Gaming", "🎵 Music", "🎬 Movies", "📚 Books", "✈️ Travel",
+                "💻 Technology", "🔬 Science", "⚽ Sports", "🎨 Art", "📸 Photography"
+            ];
+            // --- END OF DATA SIMULATION ---
+
+            // --- Telegram WebApp Initialization & UI Logic ---
+            let userId = 'mock_user_id';
+            let userName = 'User';
+            let userGender = 'male';
+            let currentPage = 'main-menu';
+
+            // Function to detect if the device is low-performance based on the User-Agent
+            function isLowPerformanceDevice() {
+                const userAgent = navigator.userAgent.toLowerCase();
+                return userAgent.includes('android') && !userAgent.includes('high-end');
+            }
+
+            function initApp() {
+                try {
+                    const initData = Telegram.initDataUnsafe;
+                    if (initData && initData.user) {
+                        userId = initData.user.id || userId;
+                        userName = initData.user.first_name || userName;
+                        // Simulate user data initialization
+                        if (!users[userId]) {
+                             users[userId] = {
+                                name: userName,
+                                gender: userGender,
+                                interests: [],
+                                bio: "Hello, this is my bio!",
+                                location: "Telegram Mini App",
+                                total_chats: 0,
+                                join_date: new Date()
+                             };
+                        }
+                    }
+                    // Listen for theme changes and update CSS variables
+                    Telegram.onEvent('themeChanged', () => {
+                        document.documentElement.style.setProperty('--tg-bg-color', Telegram.themeParams.bg_color);
+                        document.documentElement.style.setProperty('--tg-text-color', Telegram.themeParams.text_color);
+                        document.documentElement.style.setProperty('--tg-hint-color', Telegram.themeParams.hint_color);
+                        document.documentElement.style.setProperty('--tg-link-color', Telegram.themeParams.link_color);
+                        document.documentElement.style.setProperty('--tg-button-color', Telegram.themeParams.button_color);
+                        document.documentElement.style.setProperty('--tg-button-text-color', Telegram.themeParams.button_text_color);
+                        document.documentElement.style.setProperty('--tg-secondary-bg-color', Telegram.themeParams.secondary_bg_color);
+                        document.documentElement.style.setProperty('--tg-accent-text-color', Telegram.themeParams.accent_text_color);
+                    });
+                    
+                    // Listen for MainButton clicks
+                    Telegram.onEvent('mainButtonClicked', () => {
+                        handleMainButtonClick();
+                    });
+
+                    // Listen for BackButton clicks
+                    Telegram.onEvent('backButtonClicked', () => {
+                        goBack();
+                    });
+
+                } catch (e) {
+                    console.error("Telegram WebApp not available. Running in mock mode.");
+                }
+
+                // Apply low-performance class if detected
+                if (isLowPerformanceDevice()) {
+                    document.body.classList.add('low-performance');
+                }
+                
+                // Set initial MainButton colors using the theme parameters
+                Telegram.MainButton.setParams({
+                    text_color: Telegram.themeParams.button_text_color,
+                    color: Telegram.themeParams.button_color
+                }).show();
+
+                // Start on the main menu page
+                showPage('main-menu');
+                updateUI();
+                Telegram.ready(); // Signal that the app is ready to be displayed
+            }
+
+            // --- UI Navigation & Rendering ---
+            function showPage(pageId) {
+                // Keep track of the current page for MainButton logic
+                currentPage = pageId;
+
+                document.querySelectorAll('.page-content').forEach(page => page.classList.remove('active'));
+                document.getElementById(pageId).classList.add('active');
+
+                // Update the MainButton text and visibility based on the current page
+                let buttonText = 'Find Random Chat';
+                let backButtonVisible = true;
+                
+                switch (pageId) {
+                    case 'main-menu':
+                        buttonText = '🔍 Find Random Chat';
+                        backButtonVisible = false;
+                        Telegram.MainButton.show();
+                        break;
+                    case 'profile-page':
+                        buttonText = 'Save Profile';
+                        Telegram.MainButton.show();
+                        break;
+                    case 'edit-name-page':
+                        buttonText = 'Save Name';
+                        Telegram.MainButton.show();
+                        break;
+                    case 'edit-bio-page':
+                        buttonText = 'Save Bio';
+                        Telegram.MainButton.show();
+                        break;
+                    case 'edit-location-page':
+                        buttonText = 'Save Location';
+                        Telegram.MainButton.show();
+                        break;
+                    case 'edit-interests-page':
+                        buttonText = 'Save Interests';
+                        Telegram.MainButton.show();
+                        break;
+                    case 'premium-page':
+                    case 'referrals-page':
+                        // Hide MainButton on pages with multiple actions (to avoid confusion)
+                        Telegram.MainButton.hide();
+                        break;
+                }
+
+                if (backButtonVisible) {
+                    Telegram.BackButton.show();
+                } else {
+                    Telegram.BackButton.hide();
+                }
+                
+                // Update the MainButton text for the current page
+                if (pageId !== 'premium-page' && pageId !== 'referrals-page') {
+                    Telegram.MainButton.setText(buttonText);
+                }
+
+                // Update the UI content
+                updateUI();
+            }
+
+            // Centralized handler for all MainButton clicks
+            function handleMainButtonClick() {
+                Telegram.HapticFeedback.impactOccurred('light');
+                const user = users[userId];
+
+                if (!user) {
+                    // Create a mock user if one doesn't exist (for the purpose of this demo)
+                    users[userId] = {
+                        name: userName, gender: 'male', interests: [], bio: '', location: '', total_chats: 0, join_date: new Date()
+                    };
+                    user_referrals[userId] = {
+                        code: generateReferralCode(userId), referred_users: [], rewards_claimed: 0
+                    };
+                }
+                
+                switch(currentPage) {
+                    case 'main-menu':
+                        Telegram.showPopup({
+                            title: 'Searching...',
+                            message: 'This feature is not yet implemented. Please connect a server to enable this feature.'
+                        });
+                        break;
+                    case 'profile-page':
+                        Telegram.showPopup({
+                            title: 'Profile Saved',
+                            message: 'Your profile changes have been saved.'
+                        });
+                        showPage('main-menu');
+                        break;
+                    case 'edit-name-page':
+                        user.name = document.getElementById('name-input').value || 'User';
+                        showPage('profile-page');
+                        break;
+                    case 'edit-bio-page':
+                        user.bio = document.getElementById('bio-textarea').value;
+                        showPage('profile-page');
+                        break;
+                    case 'edit-location-page':
+                        user.location = document.getElementById('location-input').value;
+                        showPage('profile-page');
+                        break;
+                    case 'edit-interests-page':
+                        const selectedInterests = Array.from(document.querySelectorAll('#interests-container .button.active')).map(btn => btn.getAttribute('data-interest'));
+                        user.interests = selectedInterests.slice(0, 5); // Limit to 5
+                        showPage('profile-page');
+                        break;
+                }
+            }
+            
+            // Centralized handler for all BackButton clicks
+            function goBack() {
+                Telegram.HapticFeedback.impactOccurred('light');
+                switch(currentPage) {
+                    case 'profile-page':
+                    case 'premium-page':
+                    case 'referrals-page':
+                        showPage('main-menu');
+                        break;
+                    case 'edit-name-page':
+                    case 'edit-bio-page':
+                    case 'edit-location-page':
+                    case 'edit-interests-page':
+                        showPage('profile-page');
+                        break;
+                }
+            }
+
+
+            function updateUI() {
+                const user = users[userId];
+                if (!user) { return; }
+
+                // Update Main Menu
+                const premiumStatus = getPremiumStatus(userId);
+                document.getElementById('profile-name').innerText = user.name;
+                document.getElementById('profile-gender').innerText = user.gender.charAt(0).toUpperCase() + user.gender.slice(1);
+                document.getElementById('profile-status').innerText = "Available"; // Simplified for this demo
+                document.getElementById('profile-premium').innerText = premiumStatus.tier.charAt(0).toUpperCase() + premiumStatus.tier.slice(1);
+
+                // Update Profile Page
+                document.getElementById('profile-display-name').innerText = user.name;
+                document.getElementById('profile-display-bio').innerText = user.bio || 'No bio set';
+                document.getElementById('profile-display-location').innerText = user.location || 'Not set';
+                document.getElementById('profile-display-interests').innerText = user.interests.join(', ') || 'None set';
+                
+                // Update Premium Page
+                document.getElementById('premium-status-label').innerText = premiumStatus.is_paid || premiumStatus.is_referral ? "Active" : "Free";
+                document.getElementById('premium-tier-label').innerText = premiumStatus.tier.charAt(0).toUpperCase() + premiumStatus.tier.slice(1);
+                document.getElementById('premium-expiry-label').innerText = premiumStatus.paid_expiry ? dayjs(premiumStatus.paid_expiry).format('MMM D, YYYY') : 'N/A';
+                
+                // Update Referrals Page
+                const referralData = user_referrals[userId] || {referred_users: [], rewards_claimed: 0};
+                document.getElementById('referral-link-display').innerText = `https://t.me/${Telegram.initDataUnsafe?.user?.username || 'MaskMateBot'}?start=${generateReferralCode(userId)}`;
+                document.getElementById('referrals-total').innerText = referralData.referred_users.length;
+                document.getElementById('rewards-claimed').innerText = referralData.rewards_claimed;
+                document.getElementById('rewards-available').innerText = checkReferralRewards(userId).length;
+            }
+
+            // --- Core Logic Functions (Simplified Client-Side) ---
+            function getPremiumStatus(userId) {
+                const now = new Date();
+                let status = { tier: "free", is_paid: false, is_referral: false, paid_expiry: null };
+                let paid_tier = "free";
+
+                for (let tier of ["vip", "pro", "basic"]) {
+                    if (paid_subscriptions[tier][userId]) {
+                        const expiry = new Date(paid_subscriptions[tier][userId]);
+                        if (now < expiry) {
+                            paid_tier = tier;
+                            status.is_paid = true;
+                            status.paid_expiry = expiry;
+                            break;
+                        } else {
+                             delete paid_subscriptions[tier][userId];
+                        }
+                    }
+                }
+                
+                if (referral_premium[userId] && now < new Date(referral_premium[userId])) {
+                    status.is_referral = true;
+                }
+
+                if (paid_tier !== "free") {
+                    status.tier = paid_tier;
+                } else if (status.is_referral) {
+                    status.tier = "basic";
+                }
+
+                return status;
+            }
+
+            function grantPaidSubscription(userId, tier, days) {
+                const now = new Date();
+                let expiryDate = dayjs(now).add(days, 'day').toDate();
+                
+                if (paid_subscriptions[tier][userId]) {
+                    const existingExpiry = new Date(paid_subscriptions[tier][userId]);
+                    if (now < existingExpiry) {
+                        expiryDate = dayjs(existingExpiry).add(days, 'day').toDate();
+                    }
+                }
+                
+                paid_subscriptions[tier][userId] = expiryDate;
+                
+                const tier_hierarchy = ["basic", "pro", "vip"];
+                const tier_index = tier_hierarchy.indexOf(tier);
+                for (let i = 0; i < tier_index; i++) {
+                    delete paid_subscriptions[tier_hierarchy[i]][userId];
+                }
+                
+                updateUI();
+                Telegram.showPopup({
+                    title: 'Success!',
+                    message: `You've been granted ${days} days of ${tier.toUpperCase()} Premium!`
+                });
+            }
+
+            function generateReferralCode(userId) {
+                const data = `${userId}_${Date.now()}`;
+                const hash = btoa(data).substring(0, 6).toUpperCase();
+                return hash;
+            }
+
+            function checkReferralRewards(userId) {
+                const user_data = user_referrals[userId] || {referred_users: [], rewards_claimed: 0};
+                const total_referrals = user_data.referred_users.length;
+                const rewards_claimed = user_data.rewards_claimed;
+                const available_rewards = Math.floor(total_referrals / REFERRALS_FOR_REWARD) - rewards_claimed;
+                return new Array(Math.max(0, available_rewards)).fill(0);
+            }
+
+            function claimReferralReward(userId) {
+                const rewards = checkReferralRewards(userId);
+                if (rewards.length === 0) {
+                    Telegram.showPopup({
+                        title: 'Oops!',
+                        message: 'No rewards available. Invite more friends!'
+                    });
+                    return;
+                }
+                
+                const now = new Date();
+                const expiryDate = referral_premium[userId] ? dayjs(referral_premium[userId]).add(FREE_DAYS_REWARD, 'day').toDate() : dayjs(now).add(FREE_DAYS_REWARD, 'day').toDate();
+                referral_premium[userId] = expiryDate;
+                
+                user_referrals[userId].rewards_claimed++;
+                updateUI();
+                Telegram.showPopup({
+                    title: 'Success!',
+                    message: `You've claimed ${FREE_DAYS_REWARD} day of Basic Premium!`
+                });
+            }
+
+            // --- Event Listeners and Handlers ---
+            document.addEventListener('click', async (e) => {
+                const action = e.target.getAttribute('data-action');
+                if (!action) return;
+
+                // Provide haptic feedback for all interactive elements
+                Telegram.HapticFeedback.impactOccurred('light');
+
+                const user = users[userId];
+                if (!user) {
+                    users[userId] = {
+                        name: userName, gender: 'male', interests: [], bio: '', location: '', total_chats: 0, join_date: new Date()
+                    };
+                    user_referrals[userId] = {
+                        code: generateReferralCode(userId), referred_users: [], rewards_claimed: 0
+                    };
+                }
+
+                switch (action) {
+                    case 'go_to_profile': showPage('profile-page'); break;
+                    case 'go_to_referrals': showPage('referrals-page'); break;
+                    case 'go_to_premium': showPage('premium-page'); break;
+
+                    // Profile editing
+                    case 'edit_name': showPage('edit-name-page'); document.getElementById('name-input').value = user.name; break;
+                    case 'edit_bio': showPage('edit-bio-page'); document.getElementById('bio-textarea').value = user.bio; break;
+                    case 'edit_location': showPage('edit-location-page'); document.getElementById('location-input').value = user.location; break;
+                    case 'edit_interests': 
+                        document.getElementById('interests-container').innerHTML = '';
+                        INTERESTS.forEach(interest => {
+                            const btn = document.createElement('button');
+                            btn.className = `button secondary ${user.interests.includes(interest) ? 'active' : ''}`;
+                            btn.innerText = interest;
+                            btn.setAttribute('data-interest', interest);
+                            btn.setAttribute('aria-label', `Select interest: ${interest}`);
+                            btn.addEventListener('click', (event) => {
+                                event.target.classList.toggle('active');
+                            });
+                            document.getElementById('interests-container').appendChild(btn);
+                        });
+                        showPage('edit-interests-page');
+                        break;
+
+                    // Premium & Referrals
+                    case 'buy_basic_week':
+                    case 'buy_pro_week':
+                    case 'buy_vip_week':
+                        const plan = PREMIUM_PRICES[action];
+                        try {
+                            Telegram.openInvoice(
+                                `https://t.me/invoice/${Math.random().toString(36).substring(7)}`, // Mock URL
+                                (status) => {
+                                    if (status === 'paid') {
+                                        grantPaidSubscription(userId, plan.tier, plan.days);
+                                    } else {
+                                        Telegram.showPopup({
+                                            title: 'Payment Failed',
+                                            message: 'The payment was not completed.'
+                                        });
+                                    }
+                                }
+                            );
+                        } catch(e) {
+                             Telegram.showPopup({
+                                title: 'Payment Unavailable',
+                                message: 'Payment via Telegram Stars is not available in this preview. This is a mock action.'
+                            });
+                            console.error("openInvoice is not available in this environment.", e);
+                            grantPaidSubscription(userId, plan.tier, plan.days); // Simulate success
+                        }
+                        break;
+                    case 'claim_reward':
+                        claimReferralReward(userId);
+                        break;
+                }
+            });
+            
+            // Handle link copy on click
+            document.getElementById('referral-link-display').addEventListener('click', async (e) => {
+                const textToCopy = e.target.innerText;
+                try {
+                    const el = document.createElement('textarea');
+                    el.value = textToCopy;
+                    document.body.appendChild(el);
+                    el.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(el);
+
+                    Telegram.showPopup({
+                        title: 'Copied!',
+                        message: 'Referral link copied to your clipboard.'
+                    });
+                } catch (err) {
+                    console.error('Failed to copy text: ', err);
+                }
+            });
+
+            // Start the application
+            initApp();
+        })();
+    </script>
+</body>
+</html>
